@@ -57,16 +57,26 @@ class ProcessedFile:
 def detect_file_type(filename: str) -> str:
     """Determine the geospatial file type from the extension.
 
-    Raises UnsupportedFileTypeError for anything other than .zip/.kml.
+    Returns one of "shapefile", "kml", or "kmz".
+    Raises UnsupportedFileTypeError for anything else.
     """
     name = (filename or "").lower()
     if name.endswith(".zip"):
         return "shapefile"
     if name.endswith(".kml"):
         return "kml"
+    if name.endswith(".kmz"):
+        return "kmz"
+    # Common mistakes with a helpful message.
+    if name.endswith((".shp", ".shx", ".dbf", ".prj")):
+        raise UnsupportedFileTypeError(
+            f"You uploaded a single '{Path(filename).suffix}' component. "
+            "A shapefile is a bundle of files (.shp + .shx + .dbf + optional .prj). "
+            "Please zip the shapefile components together and upload the .zip file."
+        )
     raise UnsupportedFileTypeError(
         f"Unsupported file type for '{filename}'. "
-        "Accepted types are a .zip shapefile bundle or a .kml file."
+        "Accepted types are a .zip shapefile bundle, a .kml file, or a .kmz file."
     )
 
 
@@ -142,16 +152,35 @@ def process_file(stored_path: Path, original_filename: str, file_type: str) -> P
     """
     import geopandas as gpd  # noqa: F401 - ensure import works early
 
-    if file_type == "shapefile":
+    inner_type = file_type  # may be overridden by what's actually inside a zip
+
+    if file_type in ("shapefile", "kmz"):
         from app.storage import extract_zip
 
         extracted_dir = extract_zip(stored_path)
-        source_path = extracted_dir
+        # A zip might contain a shapefile (.shp) OR a KML (.kml, e.g. a .kmz).
+        shp_files = sorted(extracted_dir.rglob("*.shp"))
+        kml_files = sorted(extracted_dir.rglob("*.kml"))
+        if file_type == "shapefile" and shp_files:
+            inner_type = "shapefile"
+            source_path = extracted_dir
+        elif kml_files:
+            # KMZ or a zip that happened to contain a KML.
+            inner_type = "kml"
+            source_path = kml_files[0]
+        elif shp_files:
+            inner_type = "shapefile"
+            source_path = extracted_dir
+        else:
+            raise InvalidFileError(
+                "The uploaded zip contains neither a .shp (shapefile) nor a .kml file. "
+                "Please ensure the archive is a valid shapefile bundle or a KMZ."
+            )
     else:
         source_path = stored_path
 
     try:
-        gdf = _read_geodataframe(source_path, file_type)
+        gdf = _read_geodataframe(source_path, inner_type)
     except InvalidFileError:
         raise
     except Exception as exc:  # noqa: BLE001 - any read failure becomes a 422
@@ -200,7 +229,7 @@ def process_file(stored_path: Path, original_filename: str, file_type: str) -> P
         )
 
     return ProcessedFile(
-        file_type=file_type,
+        file_type=inner_type,
         crs=crs_str,
         feature_count=len(features),
         features=features,

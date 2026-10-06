@@ -75,6 +75,7 @@ def ingest_upload(
         raise ProcessingError(f"File processing failed: {exc}") from exc
 
     record.crs = processed.crs
+    record.file_type = processed.file_type
     record.feature_count = processed.feature_count
     record.status = FileStatus.COMPLETED
     record.processed_at = datetime.utcnow()

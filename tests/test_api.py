@@ -131,3 +131,51 @@ def test_invalid_zip_rejected(client):
         files={"file": ("not-a-shapefile.zip", b"not a zip", "application/zip")},
     )
     assert res.status_code == 422  # InvalidFileError
+    body = res.json()
+    # Helpful message mentions zipping shapefile components.
+    assert "shapefile" in body["detail"].lower() or "zip" in body["detail"].lower()
+
+
+def test_single_shp_component_rejected_with_help(client):
+    """Uploading a bare .shp gives a helpful 415 telling the user to zip it."""
+    res = client.post(
+        "/api/files/",
+        files={"file": ("roads.shp", b"binary shp bytes", "application/octet-stream")},
+    )
+    assert res.status_code == 415
+    assert res.json()["error_code"] == "UNSUPPORTED_FILE_TYPE"
+    assert "zip" in res.json()["detail"].lower()
+
+
+def test_kmz_upload_supported(client):
+    """A .kmz is a zip containing a .kml; the API should detect and parse it."""
+    import io
+    import zipfile
+
+    kml_content = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<kml xmlns="http://www.opengis.net/kml/2.2">'
+        '<Document><Placemark><name>kmz_line</name>'
+        '<LineString><coordinates>0,0 1,0</coordinates></LineString>'
+        '</Placemark></Document></kml>'
+    )
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("doc.kml", kml_content)
+    buf.seek(0)
+
+    res = client.post(
+        "/api/files/",
+        files={"file": ("doc.kmz", buf.getvalue(), "application/vnd.google-earth.kmz")},
+    )
+    assert res.status_code == 201, res.text
+    body = res.json()
+    assert body["file_type"] == "kml"  # detected inner type
+    assert body["feature_count"] == 1
+
+    meas = client.get(f"/api/files/{body['id']}/measurements/")
+    assert meas.status_code == 200
+    feat = meas.json()["features"][0]
+    assert feat["geometry_type"] == "LineString"
+    assert feat["measurement"]["supported"] is True
+    assert feat["measurement"]["type"] == "length"

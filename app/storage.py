@@ -38,11 +38,11 @@ def remove_upload(stored_filename: str) -> None:
 
 
 def extract_zip(zip_path: Path) -> Path:
-    """Extract a shapefile .zip into a sibling directory.
+    """Extract a .zip archive into a sibling directory and return that dir.
 
-    The directory is named after the zip stem and is returned so the reader
-    can locate the .shp inside it. Raises InvalidFileError if the archive
-    is corrupt or contains no .shp file.
+    The directory is named after the zip stem. Caller inspects the extracted
+    contents (a .shp shapefile bundle and/or a .kml). Raises InvalidFileError
+    if the archive is corrupt.
     """
     import zipfile
 
@@ -52,15 +52,12 @@ def extract_zip(zip_path: Path) -> Path:
         with zipfile.ZipFile(zip_path, "r") as zf:
             zf.extractall(target_dir)
     except zipfile.BadZipFile as exc:
-        raise InvalidFileError(f"The uploaded archive is not a valid zip file: {exc}") from exc
-
-    # Locate the .shp file (it may be nested).
-    shp_files = sorted(target_dir.rglob("*.shp"))
-    if not shp_files:
         raise InvalidFileError(
-            "The uploaded zip does not contain a .shp file. "
-            "A valid shapefile bundle must include at least the .shp, .shx and .dbf components."
-        )
+            f"The uploaded file is not a valid zip archive. "
+            f"If you uploaded a single .shp file, please zip all shapefile "
+            f"components (.shp, .shx, .dbf, .prj) together and upload the .zip. "
+            f"Detail: {exc}"
+        ) from exc
     return target_dir
 
 
