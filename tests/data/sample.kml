@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Sample Survey</name>
+    <Placemark>
+      <name>berlin_block</name>
+      <description>A roughly 1km x 1km block near Berlin</description>
+      <ExtendedData>
+        <Data name="value"><value>42</value></Data>
+        <Data name="category"><value>residential</value></Data>
+      </ExtendedData>
+      <Polygon>
+        <outerBoundaryIs>
+          <LinearRing>
+            <coordinates>13.377,52.516,0 13.387,52.516,0 13.387,52.526,0 13.377,52.526,0 13.377,52.516,0</coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+      </Polygon>
+    </Placemark>
+    <Placemark>
+      <name>diagonal</name>
+      <ExtendedData>
+        <Data name="value"><value>7</value></Data>
+      </ExtendedData>
+      <LineString>
+        <coordinates>13.377,52.516,0 13.387,52.526,0</coordinates>
+      </LineString>
+    </Placemark>
+    <Placemark>
+      <name>centre_point</name>
+      <ExtendedData>
+        <Data name="value"><value>0</value></Data>
+      </ExtendedData>
+      <Point>
+        <coordinates>13.382,52.521,0</coordinates>
+      </Point>
+    </Placemark>
+  </Document>
+</kml>

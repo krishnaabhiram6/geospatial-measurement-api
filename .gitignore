@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.env
+
+# SQLite DB (created at runtime)
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploads directory contents (created at runtime)
+uploads/*
+!uploads/.gitkeep
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
